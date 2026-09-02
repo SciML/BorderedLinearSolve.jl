@@ -1,6 +1,7 @@
 using BorderedLinearSolve
 using LinearAlgebra, SparseArrays, Random, Test
 using LinearSolve: LUFactorization, KrylovJL_GMRES
+using SciMLOperators: FunctionOperator
 using SciMLBase: successful_retcode
 
 # Reference: assemble the bordered matrix and solve it densely. Everything below is
@@ -102,11 +103,16 @@ end
     @testset "a wide border" begin
         n, m = 8, 2
         J = rand(n, n) + n * I
-        b = rand(n, m); c = rand(n, m); d = rand(m, m)
+        # A wide border is a tuple of states. It is not inferred from an array's
+        # shape, because a state can itself be a matrix.
+        bt = ntuple(_ -> rand(n), m)
+        ct = ntuple(_ -> rand(n), m)
+        d = rand(m, m)
         f = rand(n); g = rand(m)
-        M = [J b; c' d]
+        M = [reduce(hcat, collect(bt)); ]
+        M = [J reduce(hcat, collect(bt)); reduce(hcat, collect(ct))' d]
         xref = M \ vcat(f, g)
-        prob = BorderedLinearProblem(J, b, c, d, f, g)
+        prob = BorderedLinearProblem(J, bt, ct, d, f, g)
 
         # DirectBLS assembles the whole thing, so a wide border is no different.
         sol = solve(prob, DirectBLS())
@@ -169,12 +175,38 @@ end
         end
     end
 
+    @testset "a state that is not a vector" begin
+        # A 2D problem keeps its state as a matrix. Requiring a vector would push
+        # `vec`/`reshape` onto the caller, so the state shape is preserved end to end
+        # and only the inner solve sees a flattened form.
+        N = 4
+        a = 3.0
+        f2 = rand(N, N); b2 = rand(N, N); c2 = rand(N, N); d2 = 1.7; g2 = 0.3
+
+        apply(v, u, p, t) = a .* v
+        apply(w, v, u, p, t) = (w .= a .* v; w)
+        J2 = FunctionOperator(apply, zeros(N, N), zeros(N, N); islinear = true)
+
+        prob2 = BorderedLinearProblem(J2, b2, c2, d2, f2, g2)
+        sol2 = solve(prob2, BorderingBLS(KrylovJL_GMRES()))
+
+        @test successful_retcode(sol2)
+        # The state comes back in its own shape, not flattened.
+        @test size(sol2.v) == size(f2)
+        @test sol2.σ isa Number
+
+        nn = N * N
+        M2 = [a * Matrix(I, nn, nn) vec(b2); vec(c2)' fill(d2, 1, 1)]
+        xref2 = M2 \ vcat(vec(f2), g2)
+        @test vec(sol2.v) ≈ xref2[1:nn] rtol = 1.0e-8
+        @test sol2.σ ≈ xref2[end] rtol = 1.0e-8
+    end
+
     @testset "shape errors are caught" begin
         n = 5
         J = rand(n, n)
-        @test_throws DimensionMismatch BorderedLinearProblem(
-            rand(n, n + 1), rand(n), rand(n), 1.0, rand(n), 1.0
-        )
+        # `J` is only applied and solved against, so it is deliberately not checked:
+        # it may be matrix-free. The border is checked against the state instead.
         @test_throws DimensionMismatch BorderedLinearProblem(
             J, rand(n + 1), rand(n), 1.0, rand(n), 1.0
         )

@@ -26,12 +26,14 @@ module BorderedLinearSolve
 using LinearAlgebra
 using LinearSolve: LinearSolve, LinearProblem, init, solve!
 using SciMLBase: SciMLBase, ReturnCode, solve
+using SciMLOperators: FunctionOperator
 
 export BorderedLinearProblem, BorderingBLS, DirectBLS
 # Re-exported so the package can be used on its own, as the rest of SciML does.
 export solve, init, solve!
 
 include("problem.jl")
+include("flatten.jl")
 include("bordering.jl")
 include("direct.jl")
 include("interface.jl")

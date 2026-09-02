@@ -41,6 +41,23 @@ sol = solve(prob, BorderingBLS())
 sol.v, sol.σ
 ```
 
+`f` is the state and may be any array. For a 2D problem keep it as a matrix; `b` and
+`c` then have the same shape, and the solution comes back in that shape too. Nothing
+here asks you to `vec` and `reshape` around the solver.
+
+`J` is only applied and solved against, so it can be a matrix or a matrix-free
+operator, and no assumption is made about its shape.
+
+A border wider than 1 is given explicitly as a tuple of states, with `d` an `m x m`
+matrix and `g` of length `m`:
+
+```julia
+prob = BorderedLinearProblem(J, (b1, b2), (c1, c2), d, f, g)
+```
+
+The width is taken from that structure rather than inferred from an array's shape,
+because a state can itself be a matrix and the two cannot otherwise be told apart.
+
 Pick the inner algorithm the way you would for any `LinearSolve` problem:
 
 ```julia

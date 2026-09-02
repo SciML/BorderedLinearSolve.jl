@@ -1,16 +1,18 @@
 name = "BorderedLinearSolve"
 uuid = "23d1bec0-83c1-45bc-b5ed-38c76e62a0b7"
-authors = ["Jash Ambaliya"]
 version = "0.1.0"
+authors = ["Jash Ambaliya"]
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+SciMLOperators = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
 
 [compat]
 LinearSolve = "5"
 SciMLBase = "3"
+SciMLOperators = "1"
 julia = "1.10"
 
 [extras]
